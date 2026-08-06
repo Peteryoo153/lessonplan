@@ -53,12 +53,15 @@
         if (typeof src[k] === 'string') d[k] = src[k];
       });
       if (Array.isArray(src.values)) d.values = src.values.slice();
+      // 평가 영역은 교사가 추가·삭제할 수 있으므로 개수를 고정하지 않고 그대로 옮긴다.
       if (Array.isArray(src.grading)) {
-        src.grading.forEach(function (r, i) {
-          if (!d.grading[i] || !r) return;
-          if (typeof r.area === 'string') d.grading[i].area = r.area;
-          if (r.pct != null) d.grading[i].pct = String(r.pct);
-          if (typeof r.detail === 'string') d.grading[i].detail = r.detail;
+        d.grading = src.grading.map(function (r) {
+          r = r || {};
+          return {
+            area: typeof r.area === 'string' ? r.area : '',
+            pct: r.pct == null ? '' : String(r.pct),
+            detail: typeof r.detail === 'string' ? r.detail : ''
+          };
         });
       }
       if (Array.isArray(src.schedule)) {
@@ -281,17 +284,7 @@
     H.push(lockedBlock(lockedTable(TPL.COLS.gradeScale, ['등급', '비율', '등급', '비율'], TPL.GRADE_SCALE)));
 
     H.push(sub('나. 성적 반영 비율'));
-    H.push('<table class="t grading"><colgroup><col style="width:26%"><col style="width:16%">' +
-      '<col style="width:58%"></colgroup><thead><tr><th>평가 영역</th><th>반영 비율(%)</th>' +
-      '<th>세부 내용</th></tr></thead><tbody>');
-    d.grading.forEach(function (r, i) {
-      H.push('<tr><td>' + input('grading.' + i + '.area', r.area) +
-        '</td><td>' + input('grading.' + i + '.pct', r.pct) +
-        '</td><td>' + ta('grading.' + i + '.detail', r.detail, 2, '평가 방법 · 세부 기준') + '</td></tr>');
-    });
-    H.push('<tr class="sum-row"><th>합계</th><th id="gradingSum">' + TPL.sumPct(d.grading) +
-      '%</th><td class="sum-hint"></td></tr>');
-    H.push('</tbody></table>');
+    H.push('<div id="gradingBox">' + gradingTableHtml(d) + '</div>');
 
     H.push(sub('다. 인성 점수 상세 평가 기준'));
     H.push(lockedBlock(lockedList(TPL.CHARACTER_CRITERIA, 'circle')));
@@ -363,6 +356,41 @@
   function sec(t) { return '<h2 class="sec">' + esc(t) + '</h2>'; }
   function sub(t) { return '<h3 class="sub">' + esc(t) + '</h3>'; }
 
+  // 5-나. 평가 영역은 행 추가·삭제가 되므로 이 표만 따로 다시 그린다
+  // (전체를 다시 그리면 편집 중이던 다른 칸의 커서와 스크롤이 튄다).
+  function gradingTableHtml(d) {
+    var H = [];
+    H.push('<table class="t grading"><colgroup><col style="width:24%"><col style="width:15%">' +
+      '<col style="width:53%"><col style="width:8%"></colgroup>' +
+      '<thead><tr><th>평가 영역</th><th>반영 비율(%)</th><th>세부 내용</th>' +
+      '<th class="c-tools"></th></tr></thead><tbody>');
+    d.grading.forEach(function (r, i) {
+      H.push('<tr><td>' + input('grading.' + i + '.area', r.area, '평가 영역') +
+        '</td><td>' + input('grading.' + i + '.pct', r.pct) +
+        '</td><td>' + ta('grading.' + i + '.detail', r.detail, 2, '평가 방법 · 세부 기준') +
+        '</td><td class="c-tools"><button type="button" class="row-del" data-act="delGrading" ' +
+        'data-i="' + i + '" title="이 행 삭제" aria-label="이 행 삭제">×</button></td></tr>');
+    });
+    H.push('<tr class="sum-row"><th>합계</th><th id="gradingSum">' + TPL.sumPct(d.grading) +
+      '%</th><td class="sum-hint"></td><td></td></tr>');
+    H.push('</tbody></table>');
+    H.push('<div class="row-add"><button type="button" class="btn small" data-act="addGrading">' +
+      '+ 평가 영역 추가</button></div>');
+    return H.join('');
+  }
+
+  function refreshGrading(focusLast) {
+    var box = document.getElementById('gradingBox');
+    if (!box) return;
+    box.innerHTML = gradingTableHtml(doc());
+    Array.prototype.forEach.call(box.querySelectorAll('textarea'), autoGrow);
+    updateSum();
+    if (focusLast) {
+      var inputs = box.querySelectorAll('input[data-path$=".area"]');
+      if (inputs.length) inputs[inputs.length - 1].focus();
+    }
+  }
+
   function updateSum() {
     var el = document.getElementById('gradingSum');
     if (!el) return;
@@ -388,6 +416,36 @@
       if (el.tagName === 'TEXTAREA') autoGrow(el);
       if (/^grading\.\d+\.pct$/.test(el.dataset.path)) updateSum();
       markDirty();
+    }
+  });
+
+  $form.addEventListener('click', function (e) {
+    var btn = e.target.closest ? e.target.closest('[data-act]') : null;
+    if (!btn) return;
+
+    if (btn.dataset.act === 'addGrading') {
+      doc().grading.push({ area: '', pct: '', detail: '' });
+      markDirty();
+      refreshGrading(true);
+    }
+
+    if (btn.dataset.act === 'delGrading') {
+      var i = parseInt(btn.dataset.i, 10);
+      var row = doc().grading[i];
+      if (!row) return;
+      var remove = function () {
+        doc().grading.splice(i, 1);
+        markDirty();
+        refreshGrading(false);
+      };
+      // 세부 내용을 써 둔 행만 확인을 받는다. 빈 행은 바로 지운다.
+      if ((row.detail || '').trim()) {
+        confirmDialog('평가 영역 삭제',
+          '「' + (row.area || '이름 없는 영역') + '」 행을 삭제합니다. 입력한 세부 내용도 함께 지워집니다.',
+          '삭제', remove, true);
+      } else {
+        remove();
+      }
     }
   });
 
