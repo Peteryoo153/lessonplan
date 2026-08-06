@@ -26,7 +26,7 @@
   function fresh() {
     var docs = {};
     TPL.GRADES.forEach(function (g) { docs[g] = TPL.emptyDoc(g); });
-    return { version: 1, active: TPL.GRADES[0], docs: docs, applied: {} };
+    return { version: 1, active: TPL.GRADES[0], docs: docs, applied: {}, seeded: {} };
   }
 
   function load() {
@@ -83,6 +83,7 @@
     });
     if (TPL.GRADES.indexOf(s.active) !== -1) base.active = s.active;
     if (s.applied && typeof s.applied === 'object') base.applied = s.applied;
+    if (s.seeded && typeof s.seeded === 'object') base.seeded = s.seeded;
     return base;
   }
 
@@ -138,27 +139,50 @@
   }
 
   /* seed.js 의 학년별 초안을 빈 칸에만 채운다. 교사가 이미 입력한 칸은 건드리지 않는다. */
-  var MIGRATION_SEED = 'seed-content-2';
+  // 초안을 개정하면 이 숫자를 올린다. 올리면 다음 접속 때 한 번 다시 적용된다.
+  var MIGRATION_SEED = 'seed-content-3';
 
   var SEED_TEXT_KEYS = ['subject', 'teacher', 'textbook', 'targetGrade', 'classroom', 'email',
                         'overview', 'philosophy', 'objectives', 'extraRules'];
 
-  // 한 학년의 빈 칸에만 초안을 채운다.
+  /* 초안을 채울 때 「무엇을 넣었는지」를 state.seeded 에 함께 기록해 둔다.
+   * 덕분에 초안이 개정되면, 교사가 손대지 않은 칸(= 값이 지난번에 넣어 준 것과 똑같은 칸)만
+   * 골라 새 내용으로 바꿔 줄 수 있다. 교사가 고친 칸은 그대로 둔다. */
   function seedInto(g) {
     var d = state.docs[g];
     var s = typeof SEED === 'object' && SEED ? SEED[g] : null;
     if (!d || !s) return false;
 
+    if (!state.seeded) state.seeded = {};
+    var snap = state.seeded[g] || (state.seeded[g] = {});
+
+    // 비어 있거나, 지난번 초안 값 그대로인 칸만 바꾼다.
+    function put(path, current, value, assign) {
+      if (typeof value !== 'string') return;
+      var untouched = !(current || '').trim() ||
+                      (snap[path] != null && current === snap[path]);
+      if (!untouched) return;
+      assign(value);
+      snap[path] = value;
+    }
+
     SEED_TEXT_KEYS.forEach(function (k) {
-      if (typeof s[k] === 'string' && !(d[k] || '').trim()) d[k] = s[k];
+      put(k, d[k], s[k], function (v) { d[k] = v; });
     });
 
-    if (Array.isArray(s.values) && !d.values.length) d.values = s.values.slice();
+    if (Array.isArray(s.values)) {
+      var cur = d.values.join('|');
+      if (!d.values.length || (snap.values != null && cur === snap.values)) {
+        d.values = s.values.slice();
+        snap.values = d.values.join('|');
+      }
+    }
 
     if (s.grading) {
       Object.keys(s.grading).forEach(function (k) {
         var row = d.grading[parseInt(k, 10)];
-        if (row && !(row.detail || '').trim()) row.detail = s.grading[k];
+        if (!row) return;
+        put('grading.' + k, row.detail, s.grading[k], function (v) { row.detail = v; });
       });
     }
 
@@ -168,16 +192,15 @@
         var src = s.schedule[k];
         if (!row || !src) return;
         ['unit', 'standard', 'method'].forEach(function (f) {
-          if (typeof src[f] === 'string' && !(row[f] || '').trim()) row[f] = src[f];
+          put('schedule.' + k + '.' + f, row[f], src[f], function (v) { row[f] = v; });
         });
       });
     }
 
     if (Array.isArray(s.worldview)) {
       s.worldview.forEach(function (v, i) {
-        if (i < d.worldview.length && typeof v === 'string' && !(d.worldview[i] || '').trim()) {
-          d.worldview[i] = v;
-        }
+        if (i >= d.worldview.length) return;
+        put('worldview.' + i, d.worldview[i], v, function (nv) { d.worldview[i] = nv; });
       });
     }
     return true;
@@ -807,6 +830,7 @@
         state.active + ' 에 작성한 내용을 모두 버리고 최신 초안으로 되돌립니다. 되돌릴 수 없습니다.',
         '다시 불러오기', function () {
           state.docs[state.active] = TPL.emptyDoc(state.active);
+          if (state.seeded) delete state.seeded[state.active];
           seedInto(state.active);
           save(true);
           renderTabs();
