@@ -217,6 +217,27 @@
     return typeof SEED === 'object' && SEED && !!SEED[g];
   }
 
+  /* 스냅샷 기록이 생기기 전(2026-08-06 이전)에 채워진 M6 초안을 PBL 개정본으로 교체한다.
+   * 그때 채워진 값은 기록이 없어 「손댔는지」를 판별할 수 없으므로, 개정 전 초안임이
+   * 분명한 경우(수업 방법에 PBL 구조가 없는 경우)에만 한 번 통째로 다시 채운다. */
+  var MIGRATION_M6 = 'm6-pbl-reseed-1';
+
+  function forceReseedM6() {
+    if (state.applied[MIGRATION_M6]) return false;
+    state.applied[MIGRATION_M6] = true;
+
+    var d = state.docs.M6;
+    if (!d || !hasSeed('M6')) return true;
+
+    var probe = (d.schedule[2] && d.schedule[2].method) || '';
+    if (probe.indexOf('PBL 70%') !== -1) return true;   // 이미 개정본
+
+    state.docs.M6 = TPL.emptyDoc('M6');
+    if (state.seeded) delete state.seeded.M6;
+    seedInto('M6');
+    return true;
+  }
+
   function doc() { return state.docs[state.active]; }
 
   // 「마지막 저장 시각」을 건드리지 않고 그대로 기록만 한다 (내부 정리용).
@@ -874,6 +895,7 @@
   var migrated = applyScheduleDefaults();
   if (applyWorldviewMerge()) migrated = true;
   if (applySeed()) migrated = true;
+  if (forceReseedM6()) migrated = true;
   if (migrated) persist();
   renderTabs();
   renderForm();
