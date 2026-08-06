@@ -88,7 +88,8 @@
 
   /* 이미 저장된 문서에 10절 기본값(수업없음 / Orientation / Review Test)을 한 번만 채운다.
    * 교사가 일부러 비워 둔 칸을 열 때마다 되살리지 않도록, 적용 여부를 applied 에 기록한다. */
-  var MIGRATION = 'schedule-defaults-1';
+  // 기본값이 늘어나면 뒤 숫자를 올린다. 빈 칸만 채우므로 다시 돌아도 안전하다.
+  var MIGRATION = 'schedule-defaults-2';
 
   function applyScheduleDefaults() {
     if (state.applied[MIGRATION]) return false;
@@ -133,6 +134,58 @@
     });
     if (state.applied[MIGRATION_WV]) return had;
     state.applied[MIGRATION_WV] = true;
+    return true;
+  }
+
+  /* seed.js 의 학년별 초안을 빈 칸에만 채운다. 교사가 이미 입력한 칸은 건드리지 않는다. */
+  var MIGRATION_SEED = 'seed-content-1';
+
+  function applySeed() {
+    if (state.applied[MIGRATION_SEED]) return false;
+    if (typeof SEED !== 'object' || !SEED) return false;
+
+    var TEXT_KEYS = ['subject', 'teacher', 'textbook', 'targetGrade', 'classroom', 'email',
+                     'overview', 'philosophy', 'objectives', 'extraRules'];
+
+    Object.keys(SEED).forEach(function (g) {
+      var d = state.docs[g];
+      var s = SEED[g];
+      if (!d || !s) return;
+
+      TEXT_KEYS.forEach(function (k) {
+        if (typeof s[k] === 'string' && !(d[k] || '').trim()) d[k] = s[k];
+      });
+
+      if (Array.isArray(s.values) && !d.values.length) d.values = s.values.slice();
+
+      if (s.grading) {
+        Object.keys(s.grading).forEach(function (k) {
+          var row = d.grading[parseInt(k, 10)];
+          if (row && !(row.detail || '').trim()) row.detail = s.grading[k];
+        });
+      }
+
+      if (s.schedule) {
+        Object.keys(s.schedule).forEach(function (k) {
+          var row = d.schedule[parseInt(k, 10)];
+          var src = s.schedule[k];
+          if (!row || !src) return;
+          ['unit', 'standard', 'method'].forEach(function (f) {
+            if (typeof src[f] === 'string' && !(row[f] || '').trim()) row[f] = src[f];
+          });
+        });
+      }
+
+      if (Array.isArray(s.worldview)) {
+        s.worldview.forEach(function (v, i) {
+          if (i < d.worldview.length && typeof v === 'string' && !(d.worldview[i] || '').trim()) {
+            d.worldview[i] = v;
+          }
+        });
+      }
+    });
+
+    state.applied[MIGRATION_SEED] = true;
     return true;
   }
 
@@ -636,6 +689,7 @@
           state = normalize(parsed);
           applyScheduleDefaults();
           applyWorldviewMerge();
+          applySeed();
           save(true);
           renderTabs();
           renderForm();
@@ -773,6 +827,7 @@
 
   var migrated = applyScheduleDefaults();
   if (applyWorldviewMerge()) migrated = true;
+  if (applySeed()) migrated = true;
   if (migrated) persist();
   renderTabs();
   renderForm();

@@ -164,6 +164,7 @@ var TPL = (function () {
    *   0  8/14        예비소집    → 수업없음
    *   1  8/17-21                 → Orientation
    *   8  10/5-10/9               → Review Test  (중간고사 전주)
+   *   9  10/12-10/16             → 중간고사
    *  17  12/07~12/11             → Review Test  (기말고사 12/14-12/16 전주)
    *
    * ※ 중간고사 주간은 원본 학사일정에 표기가 없어 학기 중간인 10/12-10/16 주로 보았다.
@@ -173,6 +174,7 @@ var TPL = (function () {
     0: { unit: '수업없음' },
     1: { unit: 'Orientation' },
     8: { unit: 'Review Test' },
+    9: { unit: '중간고사' },
     17: { unit: 'Review Test' }
   };
 
