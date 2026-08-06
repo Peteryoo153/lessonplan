@@ -138,55 +138,60 @@
   }
 
   /* seed.js 의 학년별 초안을 빈 칸에만 채운다. 교사가 이미 입력한 칸은 건드리지 않는다. */
-  var MIGRATION_SEED = 'seed-content-1';
+  var MIGRATION_SEED = 'seed-content-2';
+
+  var SEED_TEXT_KEYS = ['subject', 'teacher', 'textbook', 'targetGrade', 'classroom', 'email',
+                        'overview', 'philosophy', 'objectives', 'extraRules'];
+
+  // 한 학년의 빈 칸에만 초안을 채운다.
+  function seedInto(g) {
+    var d = state.docs[g];
+    var s = typeof SEED === 'object' && SEED ? SEED[g] : null;
+    if (!d || !s) return false;
+
+    SEED_TEXT_KEYS.forEach(function (k) {
+      if (typeof s[k] === 'string' && !(d[k] || '').trim()) d[k] = s[k];
+    });
+
+    if (Array.isArray(s.values) && !d.values.length) d.values = s.values.slice();
+
+    if (s.grading) {
+      Object.keys(s.grading).forEach(function (k) {
+        var row = d.grading[parseInt(k, 10)];
+        if (row && !(row.detail || '').trim()) row.detail = s.grading[k];
+      });
+    }
+
+    if (s.schedule) {
+      Object.keys(s.schedule).forEach(function (k) {
+        var row = d.schedule[parseInt(k, 10)];
+        var src = s.schedule[k];
+        if (!row || !src) return;
+        ['unit', 'standard', 'method'].forEach(function (f) {
+          if (typeof src[f] === 'string' && !(row[f] || '').trim()) row[f] = src[f];
+        });
+      });
+    }
+
+    if (Array.isArray(s.worldview)) {
+      s.worldview.forEach(function (v, i) {
+        if (i < d.worldview.length && typeof v === 'string' && !(d.worldview[i] || '').trim()) {
+          d.worldview[i] = v;
+        }
+      });
+    }
+    return true;
+  }
 
   function applySeed() {
     if (state.applied[MIGRATION_SEED]) return false;
-    if (typeof SEED !== 'object' || !SEED) return false;
-
-    var TEXT_KEYS = ['subject', 'teacher', 'textbook', 'targetGrade', 'classroom', 'email',
-                     'overview', 'philosophy', 'objectives', 'extraRules'];
-
-    Object.keys(SEED).forEach(function (g) {
-      var d = state.docs[g];
-      var s = SEED[g];
-      if (!d || !s) return;
-
-      TEXT_KEYS.forEach(function (k) {
-        if (typeof s[k] === 'string' && !(d[k] || '').trim()) d[k] = s[k];
-      });
-
-      if (Array.isArray(s.values) && !d.values.length) d.values = s.values.slice();
-
-      if (s.grading) {
-        Object.keys(s.grading).forEach(function (k) {
-          var row = d.grading[parseInt(k, 10)];
-          if (row && !(row.detail || '').trim()) row.detail = s.grading[k];
-        });
-      }
-
-      if (s.schedule) {
-        Object.keys(s.schedule).forEach(function (k) {
-          var row = d.schedule[parseInt(k, 10)];
-          var src = s.schedule[k];
-          if (!row || !src) return;
-          ['unit', 'standard', 'method'].forEach(function (f) {
-            if (typeof src[f] === 'string' && !(row[f] || '').trim()) row[f] = src[f];
-          });
-        });
-      }
-
-      if (Array.isArray(s.worldview)) {
-        s.worldview.forEach(function (v, i) {
-          if (i < d.worldview.length && typeof v === 'string' && !(d.worldview[i] || '').trim()) {
-            d.worldview[i] = v;
-          }
-        });
-      }
-    });
-
+    TPL.GRADES.forEach(seedInto);
     state.applied[MIGRATION_SEED] = true;
     return true;
+  }
+
+  function hasSeed(g) {
+    return typeof SEED === 'object' && SEED && !!SEED[g];
   }
 
   function doc() { return state.docs[state.active]; }
@@ -793,6 +798,23 @@
       });
       toast('7개 파일을 순서대로 내려받습니다.');
     }
+    if (act === 'reseed') {
+      if (!hasSeed(state.active)) {
+        toast(state.active + ' 는 아직 준비된 초안이 없습니다.', true);
+        return;
+      }
+      confirmDialog('초안 다시 불러오기',
+        state.active + ' 에 작성한 내용을 모두 버리고 최신 초안으로 되돌립니다. 되돌릴 수 없습니다.',
+        '다시 불러오기', function () {
+          state.docs[state.active] = TPL.emptyDoc(state.active);
+          seedInto(state.active);
+          save(true);
+          renderTabs();
+          renderForm();
+          toast(state.active + ' 초안을 다시 불러왔습니다.');
+        }, true);
+    }
+
     if (act === 'clear') {
       confirmDialog('이 학년 내용 비우기',
         state.active + ' 에 작성한 내용을 모두 지웁니다. 되돌릴 수 없습니다.',
