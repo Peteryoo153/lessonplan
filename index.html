@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2026 가을학기 교육계획서</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar" id="topbar">
+  <div class="topbar-row">
+    <div class="brand">
+      <strong>2026 가을학기 교육계획서</strong>
+      <span class="brand-sub">등대교육공동체</span>
+    </div>
+    <div class="actions">
+      <span id="status" class="status"></span>
+      <button id="saveBtn" class="btn primary">저장</button>
+      <button id="printBtn" class="btn">인쇄 / PDF</button>
+      <button id="docxBtn" class="btn">Word (.docx)</button>
+      <div class="menu-wrap">
+        <button id="moreBtn" class="btn" aria-haspopup="true" aria-expanded="false">⋯</button>
+        <div id="moreMenu" class="menu" hidden>
+          <button data-act="copyTo">이 내용을 다른 학년으로 복사…</button>
+          <button data-act="backup">전체 백업 내보내기 (.json)</button>
+          <button data-act="restore">백업 가져오기 (.json)</button>
+          <button data-act="docxAll">7개 학년 .docx 모두 내보내기</button>
+          <hr>
+          <button data-act="clear" class="danger">이 학년 내용 모두 비우기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs"></nav>
+</header>
+
+<main class="page" id="form"></main>
+
+<input id="restoreFile" type="file" accept="application/json,.json" hidden>
+
+<div id="printArea" class="print-area"></div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="template.js"></script>
+<script src="docx.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
