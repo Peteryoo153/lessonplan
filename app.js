@@ -67,9 +67,16 @@
       if (Array.isArray(src.schedule)) {
         src.schedule.forEach(function (r, i) {
           if (!d.schedule[i] || !r) return;
-          ['unit', 'standard', 'method', 'note'].forEach(function (k) {
+          ['unit', 'standard', 'method'].forEach(function (k) {
             if (typeof r[k] === 'string') d.schedule[i][k] = r[k];
           });
+          // 주차별 「비고」는 시험 구간 단위 병합으로 바뀌었다. 옮겨 담을 때까지만 들고 있는다.
+          if (typeof r.note === 'string' && r.note) d.schedule[i]._note = r.note;
+        });
+      }
+      if (Array.isArray(src.worldview)) {
+        src.worldview.forEach(function (v, i) {
+          if (i < d.worldview.length && typeof v === 'string') d.worldview[i] = v;
         });
       }
       if (typeof src.updatedAt === 'string') d.updatedAt = src.updatedAt;
@@ -95,6 +102,37 @@
       });
     });
     state.applied[MIGRATION] = true;
+    return true;
+  }
+
+  /* 주차별로 흩어져 있던 「비고 / (기독교 세계관)」을 시험 구간 두 칸으로 합친다.
+   * 이미 써 둔 내용은 해당 구간 칸에 「일시 — 내용」 형태로 이어 붙여 보존한다. */
+  var MIGRATION_WV = 'worldview-merge-1';
+
+  function applyWorldviewMerge() {
+    var had = false;
+    TPL.GRADES.forEach(function (g) {
+      var d = state.docs[g];
+      TPL.WORLDVIEW_BLOCKS.forEach(function (blk, bi) {
+        var carried = [];
+        for (var i = blk.from; i <= blk.to; i++) {
+          var row = d.schedule[i];
+          if (!row) continue;
+          if (row._note) {
+            carried.push(TPL.SCHEDULE[i].lines[0] + ' — ' + row._note);
+            had = true;
+          }
+          delete row._note;
+        }
+        if (!carried.length) return;
+        var cur = (d.worldview[bi] || '').trim();
+        d.worldview[bi] = cur ? cur + '\n' + carried.join('\n') : carried.join('\n');
+      });
+      // 구간 밖(마지막 고정 2행 등)에 남은 값이 있으면 버리지 않고 흘려보내지 않도록 정리
+      d.schedule.forEach(function (row) { delete row._note; });
+    });
+    if (state.applied[MIGRATION_WV]) return had;
+    state.applied[MIGRATION_WV] = true;
     return true;
   }
 
@@ -172,7 +210,9 @@
     toast._t = setTimeout(function () { $toast.hidden = true; }, isError ? 5000 : 2200);
   }
 
+  // 병합된 세로 칸(.wv-cell)의 입력란은 칸 높이를 그대로 채워야 하므로 자동 높이 조절에서 뺀다.
   function autoGrow(el) {
+    if (el.closest && el.closest('.wv-cell')) return;
     el.style.height = 'auto';
     el.style.height = Math.max(el.scrollHeight + 2, 34) + 'px';
   }
@@ -361,8 +401,19 @@
       }).join('') + '</th>' +
         '<td>' + ta('schedule.' + i + '.unit', r.unit, 2) + '</td>' +
         '<td>' + ta('schedule.' + i + '.standard', r.standard, 2) + '</td>' +
-        '<td>' + ta('schedule.' + i + '.method', r.method, 2) + '</td>' +
-        '<td>' + ta('schedule.' + i + '.note', r.note, 2) + '</td></tr>');
+        '<td>' + ta('schedule.' + i + '.method', r.method, 2) + '</td>');
+      // 마지막 열은 시험 구간 단위로 병합된 한 칸. 구간 첫 행에서만 칸을 연다.
+      var hit = TPL.worldviewBlockAt(i);
+      if (hit) {
+        var span = hit.block.to - hit.block.from + 1;
+        H.push('<td class="wv-cell" rowspan="' + span + '">' +
+          '<span class="wv-label">' + esc(hit.block.label) + ' · ' +
+          esc(TPL.SCHEDULE[hit.block.from].lines[0]) + ' ~ ' +
+          esc(TPL.SCHEDULE[hit.block.to].lines[0]) + '</span>' +
+          ta('worldview.' + hit.idx, d.worldview[hit.idx], 6,
+            '이 구간 전체에 적용할 비고 · 기독교 세계관') + '</td>');
+      }
+      H.push('</tr>');
     });
     TPL.SCHEDULE_FOOTER.forEach(function (f) {
       H.push('<tr class="fixed-row"><th class="when"><span class="w-main">' + esc(f.date) +
@@ -512,8 +563,10 @@
           b.rows.forEach(function (row) {
             out += '<tr>';
             row.forEach(function (c) {
+              if (c.vmergeCont) return;   // 세로 병합으로 이어지는 칸 — 위 칸의 rowspan 이 덮는다
               var tag = c.head ? 'th' : 'td';
               var attr = (c.span ? ' colspan="' + c.span + '"' : '') +
+                (c.rowspan ? ' rowspan="' + c.rowspan + '"' : '') +
                 (c.align === 'center' ? ' class="c-center"' : '');
               var body;
               if (c.lines && c.lines.length) {
@@ -586,6 +639,7 @@
         '가져오기', function () {
           state = normalize(parsed);
           applyScheduleDefaults();
+          applyWorldviewMerge();
           save(true);
           renderTabs();
           renderForm();
@@ -721,7 +775,9 @@
 
   /* ── 시작 ─────────────────────────────────────────────────── */
 
-  if (applyScheduleDefaults()) persist();
+  var migrated = applyScheduleDefaults();
+  if (applyWorldviewMerge()) migrated = true;
+  if (migrated) persist();
   renderTabs();
   renderForm();
 })();

@@ -181,6 +181,10 @@ var DOCX = (function () {
 
         var tcPr = '<w:tcPr><w:tcW w:w="' + w + '" w:type="dxa"/>';
         if (span > 1) tcPr += '<w:gridSpan w:val="' + span + '"/>';
+        // 세로 병합: 시작 행은 restart, 이어지는 행은 값 없는 vMerge 로 표시한다.
+        // (CT_TcPr 순서상 gridSpan 다음, shd 앞)
+        if (c.rowspan) tcPr += '<w:vMerge w:val="restart"/>';
+        else if (c.vmergeCont) tcPr += '<w:vMerge/>';
         if (c.head) tcPr += '<w:shd w:val="clear" w:color="auto" w:fill="F2F2F2"/>';
         tcPr += '<w:vAlign w:val="' + (c.head ? 'center' : 'top') + '"/></w:tcPr>';
 

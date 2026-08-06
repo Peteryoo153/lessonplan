@@ -176,6 +176,20 @@ var TPL = (function () {
     17: { unit: 'Review Test' }
   };
 
+  /* 「비고 / (기독교 세계관)」 열은 주차별로 나누지 않고 시험 구간 단위로 세로 병합한다.
+   * from/to 는 SCHEDULE 의 인덱스(양끝 포함). 각 구간이 입력 칸 하나가 된다. */
+  var WORLDVIEW_BLOCKS = [
+    { label: '중간고사 구간', from: 0, to: 8 },   // 8/14 ~ 10/5-10/9
+    { label: '기말고사 구간', from: 9, to: 17 }   // 10/12-10/16 ~ 12/07~12/11
+  ];
+
+  function worldviewBlockAt(i) {
+    for (var b = 0; b < WORLDVIEW_BLOCKS.length; b++) {
+      if (WORLDVIEW_BLOCKS[b].from === i) return { idx: b, block: WORLDVIEW_BLOCKS[b] };
+    }
+    return null;
+  }
+
   // 표 마지막 2행 — 입력 칸 없이 통합된 고정 행
   var SCHEDULE_FOOTER = [
     { date: '12/14-12/16', text: '12/14-12/16 기말고사,' },
@@ -221,10 +235,10 @@ var TPL = (function () {
         return {
           unit: def.unit || '',
           standard: def.standard || '',
-          method: def.method || '',
-          note: def.note || ''
+          method: def.method || ''
         };
       }),
+      worldview: WORLDVIEW_BLOCKS.map(function () { return ''; }),
       updatedAt: null
     };
   }
@@ -323,11 +337,20 @@ var TPL = (function () {
       cellH('수업 방법', 'center'), cellH('비고 / (기독교 세계관)', 'center')
     ]];
     SCHEDULE.forEach(function (s, i) {
-      var r = d.schedule[i] || { unit: '', standard: '', method: '', note: '' };
-      rows.push([
+      var r = d.schedule[i] || { unit: '', standard: '', method: '' };
+      var row = [
         cell('', { lines: s.lines, align: 'center' }),
-        cell(dash(r.unit)), cell(dash(r.standard)), cell(dash(r.method)), cell(dash(r.note))
-      ]);
+        cell(dash(r.unit)), cell(dash(r.standard)), cell(dash(r.method))
+      ];
+      // 마지막 열은 시험 구간 단위로 세로 병합한다.
+      var hit = worldviewBlockAt(i);
+      if (hit) {
+        row.push(cell(dash(d.worldview[hit.idx]),
+          { rowspan: hit.block.to - hit.block.from + 1 }));
+      } else {
+        row.push(cell('', { vmergeCont: true }));
+      }
+      rows.push(row);
     });
     SCHEDULE_FOOTER.forEach(function (f) {
       rows.push([cell(f.date, { align: 'center' }), cell(f.text, { span: 4 })]);
@@ -344,6 +367,8 @@ var TPL = (function () {
       if (opts.span) c.span = opts.span;
       if (opts.lines) c.lines = opts.lines;
       if (opts.grow) c.grow = true;
+      if (opts.rowspan) c.rowspan = opts.rowspan;
+      if (opts.vmergeCont) c.vmergeCont = true;
     }
     return c;
   }
@@ -369,6 +394,8 @@ var TPL = (function () {
     SCHEDULE: SCHEDULE,
     SCHEDULE_DEFAULTS: SCHEDULE_DEFAULTS,
     SCHEDULE_FOOTER: SCHEDULE_FOOTER,
+    WORLDVIEW_BLOCKS: WORLDVIEW_BLOCKS,
+    worldviewBlockAt: worldviewBlockAt,
     GRADING_ROWS: GRADING_ROWS,
     GRADE_SCALE: GRADE_SCALE,
     COMPETENCY_INTRO: COMPETENCY_INTRO,
