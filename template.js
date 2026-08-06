@@ -158,6 +158,24 @@ var TPL = (function () {
     { lines: ['12/07~12/11'] }
   ];
 
+  /* 10절 「단원명」 칸에 미리 채워 두는 값. (SCHEDULE 의 인덱스 → 값)
+   * 모든 학년 공통이며, 교사가 지우거나 고쳐 쓸 수 있는 일반 입력값이다.
+   *
+   *   0  8/14        예비소집    → 수업없음
+   *   1  8/17-21                 → Orientation
+   *   8  10/5-10/9               → Review Test  (중간고사 전주)
+   *  17  12/07~12/11             → Review Test  (기말고사 12/14-12/16 전주)
+   *
+   * ※ 중간고사 주간은 원본 학사일정에 표기가 없어 학기 중간인 10/12-10/16 주로 보았다.
+   *   실제 중간고사가 다른 주라면 아래 인덱스 8 을 그 전주 인덱스로 바꾸면 된다.
+   */
+  var SCHEDULE_DEFAULTS = {
+    0: { unit: '수업없음' },
+    1: { unit: 'Orientation' },
+    8: { unit: 'Review Test' },
+    17: { unit: 'Review Test' }
+  };
+
   // 표 마지막 2행 — 입력 칸 없이 통합된 고정 행
   var SCHEDULE_FOOTER = [
     { date: '12/14-12/16', text: '12/14-12/16 기말고사,' },
@@ -198,8 +216,14 @@ var TPL = (function () {
       }),
       extraRules: '',
       values: [],
-      schedule: SCHEDULE.map(function () {
-        return { unit: '', standard: '', method: '', note: '' };
+      schedule: SCHEDULE.map(function (s, i) {
+        var def = SCHEDULE_DEFAULTS[i] || {};
+        return {
+          unit: def.unit || '',
+          standard: def.standard || '',
+          method: def.method || '',
+          note: def.note || ''
+        };
       }),
       updatedAt: null
     };
@@ -343,6 +367,7 @@ var TPL = (function () {
     DOC_SUBTITLE: DOC_SUBTITLE,
     CORE_VALUES: CORE_VALUES,
     SCHEDULE: SCHEDULE,
+    SCHEDULE_DEFAULTS: SCHEDULE_DEFAULTS,
     SCHEDULE_FOOTER: SCHEDULE_FOOTER,
     GRADING_ROWS: GRADING_ROWS,
     GRADE_SCALE: GRADE_SCALE,

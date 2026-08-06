@@ -26,7 +26,7 @@
   function fresh() {
     var docs = {};
     TPL.GRADES.forEach(function (g) { docs[g] = TPL.emptyDoc(g); });
-    return { version: 1, active: TPL.GRADES[0], docs: docs };
+    return { version: 1, active: TPL.GRADES[0], docs: docs, applied: {} };
   }
 
   function load() {
@@ -75,20 +75,46 @@
       if (typeof src.updatedAt === 'string') d.updatedAt = src.updatedAt;
     });
     if (TPL.GRADES.indexOf(s.active) !== -1) base.active = s.active;
+    if (s.applied && typeof s.applied === 'object') base.applied = s.applied;
     return base;
+  }
+
+  /* 이미 저장된 문서에 10절 기본값(수업없음 / Orientation / Review Test)을 한 번만 채운다.
+   * 교사가 일부러 비워 둔 칸을 열 때마다 되살리지 않도록, 적용 여부를 applied 에 기록한다. */
+  var MIGRATION = 'schedule-defaults-1';
+
+  function applyScheduleDefaults() {
+    if (state.applied[MIGRATION]) return false;
+    TPL.GRADES.forEach(function (g) {
+      var sched = state.docs[g].schedule;
+      Object.keys(TPL.SCHEDULE_DEFAULTS).forEach(function (k) {
+        var row = sched[parseInt(k, 10)];
+        var def = TPL.SCHEDULE_DEFAULTS[k];
+        if (!row || !def.unit) return;
+        if (!(row.unit || '').trim()) row.unit = def.unit;
+      });
+    });
+    state.applied[MIGRATION] = true;
+    return true;
   }
 
   function doc() { return state.docs[state.active]; }
 
-  function save(quiet) {
-    doc().updatedAt = new Date().toISOString();
+  // 「마지막 저장 시각」을 건드리지 않고 그대로 기록만 한다 (내부 정리용).
+  function persist() {
     try {
       localStorage.setItem(KEY, JSON.stringify(state));
+      return true;
     } catch (e) {
       toast('저장 실패: ' + (e && e.name === 'QuotaExceededError'
         ? '브라우저 저장 공간이 가득 찼습니다.' : e.message), true);
       return false;
     }
+  }
+
+  function save(quiet) {
+    doc().updatedAt = new Date().toISOString();
+    if (!persist()) return false;
     dirty = false;
     updateStatus();
     renderTabs();
@@ -162,17 +188,16 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
 
+  // 갓 만든 빈 문서와 완전히 같은지 비교한다. 10절 기본값처럼 미리 채워 둔 값이 있어도
+  // 손대지 않았다면 「비어 있음」으로 본다.
   function isEmptyDoc(d) {
-    if (['subject', 'teacher', 'textbook', 'targetGrade', 'classroom', 'email',
-         'overview', 'philosophy', 'objectives', 'extraRules'].some(function (k) {
-      return (d[k] || '').trim();
-    })) return false;
-    if (d.values.length) return false;
-    if (d.grading.some(function (r) { return (r.detail || '').trim(); })) return false;
-    if (d.schedule.some(function (r) {
-      return ['unit', 'standard', 'method', 'note'].some(function (k) { return (r[k] || '').trim(); });
-    })) return false;
-    return true;
+    return contentOf(d) === contentOf(TPL.emptyDoc(d.grade));
+  }
+
+  function contentOf(d) {
+    var c = JSON.parse(JSON.stringify(d));
+    c.updatedAt = null;
+    return JSON.stringify(c);
   }
 
   /* ── 탭 ───────────────────────────────────────────────────── */
@@ -560,6 +585,7 @@
         '현재 브라우저에 저장된 7개 학년 내용이 모두 백업 파일의 내용으로 바뀝니다. 계속할까요?',
         '가져오기', function () {
           state = normalize(parsed);
+          applyScheduleDefaults();
           save(true);
           renderTabs();
           renderForm();
@@ -695,6 +721,7 @@
 
   /* ── 시작 ─────────────────────────────────────────────────── */
 
+  if (applyScheduleDefaults()) persist();
   renderTabs();
   renderForm();
 })();
