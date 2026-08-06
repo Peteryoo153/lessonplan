@@ -407,11 +407,7 @@
       if (hit) {
         var span = hit.block.to - hit.block.from + 1;
         H.push('<td class="wv-cell" rowspan="' + span + '">' +
-          '<span class="wv-label">' + esc(hit.block.label) + ' · ' +
-          esc(TPL.SCHEDULE[hit.block.from].lines[0]) + ' ~ ' +
-          esc(TPL.SCHEDULE[hit.block.to].lines[0]) + '</span>' +
-          ta('worldview.' + hit.idx, d.worldview[hit.idx], 6,
-            '이 구간 전체에 적용할 비고 · 기독교 세계관') + '</td>');
+          ta('worldview.' + hit.idx, d.worldview[hit.idx], 6, '') + '</td>');
       }
       H.push('</tr>');
     });
