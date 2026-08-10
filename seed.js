@@ -38,6 +38,7 @@ var SEED = {
     textbook: '천로역정 — 천국을 향해 가는 순례자의 여정 (ISBN 9788993474497)',
     targetGrade: 'M6',
     teacher: 'Rev.Peter Yoo',
+    classroom: '43n6tqkx',
     email: 'stigma153.peter@gmail.com',
 
     worldview: [
@@ -261,6 +262,7 @@ var SEED = {
     textbook: '10시간 만에 끝내는 스피드 조직신학 (ISBN 9788936502270)',
     targetGrade: 'M7',
     teacher: 'Rev.Peter Yoo',
+    classroom: 'z4r3tdbg',
     email: 'stigma153.peter@gmail.com',
 
     worldview: [
@@ -464,6 +466,7 @@ var SEED = {
     textbook: '누가복음, 복음으로 읽기 (ISBN 9788958743620)',
     targetGrade: 'M8',
     teacher: 'Rev.Peter Yoo',
+    classroom: 'g6qaw2vq',
     email: 'stigma153.peter@gmail.com',
 
     worldview: [
@@ -670,6 +673,7 @@ var SEED = {
     textbook: '초대교회사 (ISBN 9788972364016)',
     targetGrade: 'H9',
     teacher: 'Rev.Peter Yoo',
+    classroom: 'xhgr5axl',
     email: 'stigma153.peter@gmail.com',
 
     worldview: [
@@ -876,6 +880,7 @@ var SEED = {
     textbook: '완전한 진리 (ISBN 9788990353429)',
     targetGrade: 'H10',
     teacher: 'Rev.Peter Yoo',
+    classroom: 'euick5gi',
     email: 'stigma153.peter@gmail.com',
 
     worldview: [
@@ -1076,6 +1081,7 @@ var SEED = {
     textbook: '제임스 패커의 기독교 기본 진리 (ISBN 9791185066882)',
     targetGrade: 'H11',
     teacher: 'Rev.Peter Yoo',
+    classroom: 'xldw5wnx',
     email: 'stigma153.peter@gmail.com',
 
     worldview: [
@@ -1272,6 +1278,7 @@ var SEED = {
     textbook: '제자가 된다는 것 (ISBN 9791170831068) · 인간이 된다는 것 (ISBN 9791170831273)',
     targetGrade: 'H12',
     teacher: 'Rev.Peter Yoo',
+    classroom: 'ubptgz4m',
     email: 'stigma153.peter@gmail.com',
 
     worldview: [
