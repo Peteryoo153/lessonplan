@@ -140,7 +140,7 @@
 
   /* seed.js 의 학년별 초안을 빈 칸에만 채운다. 교사가 이미 입력한 칸은 건드리지 않는다. */
   // 초안을 개정하면 이 숫자를 올린다. 올리면 다음 접속 때 한 번 다시 적용된다.
-  var MIGRATION_SEED = 'seed-content-5';
+  var MIGRATION_SEED = 'seed-content-6';
 
   var SEED_TEXT_KEYS = ['subject', 'teacher', 'textbook', 'targetGrade', 'classroom', 'email',
                         'overview', 'philosophy', 'objectives', 'extraRules'];
